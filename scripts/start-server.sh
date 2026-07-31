@@ -58,16 +58,41 @@ export JSIG="libjsig.so"
 export JARPATH="java/:java/lwjgl.jar:java/lwjgl_util.jar:java/sqlite-jdbc-3.8.10.1.jar:java/uncommons-maths-1.2.3.jar"
 echo "---Looking for server configuration file---"
 if [ ! -d ${SERVER_DIR}/Zomboid ]; then
-	echo "---No server configruation found, downloading template---"
-	cd ${SERVER_DIR}
-	if cp -r /opt/cfg/Zomboid ${SERVER_DIR}/ ; then
-		echo "---Successfully copied bundled server configuration file---"
-	else
-		echo "---Something went wrong, can't copy bundled server configuration file, putting server in sleep mode---"
-		sleep infinity
-	fi
+	echo "---No server configuration found---"
+	echo "---The server will generate a current one on this first start---"
+	echo "---Settings will appear in Zomboid/Server/servertest.ini shortly---"
 else
 	echo "---Server configuration files found!---"
+fi
+
+if [ "${ADMIN_PWD}" == "adminDocker" ]; then
+	echo "---------------------------------------------------------------"
+	echo "ADMIN_PWD is still the default value, which is published in this"
+	echo "image's documentation and is therefore public knowledge. Set"
+	echo "ADMIN_PWD to something else before exposing this server."
+	echo "---------------------------------------------------------------"
+fi
+
+# Optional: force the join password from the environment on every boot.
+# Unset means "leave the ini alone" so manual edits survive; set-but-empty
+# (SERVER_PASSWORD=) explicitly clears the password. These are different, which
+# is why this tests for definedness rather than for a non-empty value.
+if [ -n "${SERVER_PASSWORD+defined}" ]; then
+	PZ_INI="${SERVER_DIR}/Zomboid/Server/servertest.ini"
+	if [ -f "${PZ_INI}" ]; then
+		if grep -q '^Password=' "${PZ_INI}"; then
+			sed -i "s|^Password=.*|Password=${SERVER_PASSWORD}|" "${PZ_INI}"
+		else
+			echo "Password=${SERVER_PASSWORD}" >> "${PZ_INI}"
+		fi
+		if [ -z "${SERVER_PASSWORD}" ]; then
+			echo "---Join password cleared, server is open---"
+		else
+			echo "---Join password set from SERVER_PASSWORD---"
+		fi
+	else
+		echo "---Can't find ${PZ_INI}, skipping password override---"
+	fi
 fi
 
 echo "---Checking for old logs---"

@@ -33,11 +33,6 @@ RUN mkdir $DATA_DIR && \
 ADD /scripts/ /opt/scripts/
 RUN chmod -R 770 /opt/scripts/
 
-# Bundled at build time instead of downloaded from GitHub on first boot.
-# Kept as a plain folder rather than an archive so it survives being copied
-# between Windows and Linux without a zip/unzip round trip.
-ADD /config/Zomboid/ /opt/cfg/Zomboid/
-RUN chmod -R a+rX /opt/cfg
 
 #Server Start
 ENTRYPOINT ["/opt/scripts/start.sh"]

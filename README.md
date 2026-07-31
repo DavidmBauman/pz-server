@@ -1,6 +1,6 @@
 # Project Zomboid server container (fixed fork of ich777's)
 
-This is ich777's `projectzomboid` branch with three fixes. Everything else —
+This is ich777's `projectzomboid` branch with five fixes. Everything else —
 env var names, paths, UID 99 / GID 100 defaults, the `screen` session, the
 watchdog, the `/opt/custom/user.sh` hook — is unchanged, so existing run
 commands and Unraid templates keep working.
@@ -52,21 +52,38 @@ empty. `GAME_ID` defaults to `380870` instead of `template` for the same
 reason, and the unused `GAME_NAME` was dropped — it is an SRCDS concept that
 Project Zomboid has no use for.
 
-**3. The config template is bundled into the image.** Upstream downloads
-`cfg.zip` from GitHub on first boot and, if that fails, calls `sleep infinity`,
-leaving a container that looks alive but never starts. It is now copied in at
-build time, and kept as the plain `config/Zomboid/` folder rather than an
-archive so it survives being moved between Windows and Linux without a
-zip/unzip round trip.
+**3. No bundled config template.** Upstream downloads a `cfg.zip` from GitHub
+on first boot and, if that fails, calls `sleep infinity` — a container that
+looks alive but never starts. That template also dates from 2019: 108 settings
+where current builds have roughly twice as many, and it silently presets
+`Password=Docker`, `PVP=true`, `MaxPlayers=64`, and a `PublicName` of "Docker
+ProjectZomboid". New users hit "wrong server password given" with no idea why.
+
+It is gone. The server now writes its own current, complete config on first
+start. This is only possible because of fix 1 — the interactive admin-password
+prompt that made a template necessary is skipped once `-adminpassword` actually
+reaches the game.
+
+**4. `SERVER_PASSWORD` env var.** Sets the join password without hand-editing
+the ini. Leave it unset and the ini is never touched, so manual edits survive
+restarts. Set it empty (`SERVER_PASSWORD=`) to explicitly clear the password.
+Note this is the *join* password every player types; `ADMIN_PWD` is a separate
+thing, used only to log in as admin once already in the game.
+
+On a brand-new server the ini does not exist yet during the first start, so
+`SERVER_PASSWORD` applies from the second start onward. On any server that has
+run once, it applies immediately.
+
+**5. Loud warning if `ADMIN_PWD` is left at its default.** The default is
+published in this file and is therefore public knowledge. The server still
+starts — it just tells you.
 
 ## Notes
 
-The bundled config template dates from 2019. That is fine — the game reads
-the keys it recognises and rewrites the file with current defaults for anything
-missing — but if you would rather have the server generate a clean modern
-config, delete the `Zomboid` directory from your serverfiles volume before the
-first start. The `-adminpassword` flag now reaches the game, so it will not
-block on the interactive password prompt.
+To start over with a fresh config on an existing server, delete the `Zomboid`
+directory from your serverfiles volume and restart. This wipes settings, the
+player database, and the world, so back it up first if you want to keep the
+save.
 
 Set memory through `GAME_PARAMS`, not by editing
 `serverfiles/ProjectZomboid64.json` — SteamCMD rewrites that file on every game
@@ -74,3 +91,13 @@ update, so edits there disappear on patch day.
 
 If ich777 fixes this upstream, `docker build` against the original branch again
 and drop this fork. Nothing here depends on it.
+
+## Server join password
+
+No password by default. To set one, either add `--env 'SERVER_PASSWORD=yourpw'`
+to the run command, or edit `Password=` in
+`serverfiles/Zomboid/Server/servertest.ini` and restart.
+
+If you see "wrong server password given" on a server built from the upstream
+image, that is the 2019 template's preset `Password=Docker`. Blank that line
+and restart.
