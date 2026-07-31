@@ -24,6 +24,4 @@ jobs:
         with:
           context: .
           push: true
-          # GHCR requires all-lowercase names, so this is hardcoded rather than
-          # built from github.repository_owner (which has capitals in it).
           tags: ghcr.io/davidmbauman/pz-server:latest
