@@ -1,0 +1,43 @@
+FROM ich777/debian-baseimage
+
+LABEL org.opencontainers.image.authors="admin@minenet.at"
+LABEL org.opencontainers.image.source="https://github.com/ich777/docker-steamcmd-server"
+
+RUN apt-get update && \
+	apt-get -y install --no-install-recommends lib32gcc-s1 screen unzip && \
+	rm -rf /var/lib/apt/lists/*
+
+ENV DATA_DIR="/serverdata"
+ENV STEAMCMD_DIR="${DATA_DIR}/steamcmd"
+ENV SERVER_DIR="${DATA_DIR}/serverfiles"
+ENV GAME_ID="380870"
+ENV GAME_PARAMS=""
+ENV ADMIN_PWD="adminDocker"
+ENV GAME_PORT=27015
+ENV VALIDATE=""
+ENV UMASK=000
+ENV UID=99
+ENV GID=100
+ENV USERNAME=""
+ENV PASSWRD=""
+ENV USER="steam"
+ENV DATA_PERM=770
+
+RUN mkdir $DATA_DIR && \
+	mkdir $STEAMCMD_DIR && \
+	mkdir $SERVER_DIR && \
+	useradd -d $SERVER_DIR -s /bin/bash $USER && \
+	chown -R $USER $DATA_DIR && \
+	ulimit -n 2048
+
+ADD /scripts/ /opt/scripts/
+RUN chmod -R 770 /opt/scripts/
+
+# Bundled at build time instead of downloaded from GitHub on first boot.
+# Kept as a plain folder rather than an archive so it survives being copied
+# between Windows and Linux without a zip/unzip round trip.
+ADD /config/Zomboid/ /opt/cfg/Zomboid/
+RUN chmod -R a+rX /opt/cfg
+
+#Server Start
+ENTRYPOINT ["/opt/scripts/start.sh"]
